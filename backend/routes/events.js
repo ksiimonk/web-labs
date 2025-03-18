@@ -1,6 +1,7 @@
 const express = require("express");
 const { Op } = require("sequelize");
 const Event = require("../models/Event");
+const passport = require("passport");
 
 const router = express.Router();
 
@@ -47,13 +48,9 @@ const router = express.Router();
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-
-//  Получить список всех мероприятий
 router.get("/", async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-
-        // Строим условие фильтрации
         let filter = {};
 
         if (startDate) {
@@ -61,7 +58,7 @@ router.get("/", async (req, res) => {
             if (isNaN(parsedStartDate.getTime())) {
                 return res.status(400).json({ error: "Некорректный формат начальной даты" });
             }
-            filter.date = { [Op.gte]: parsedStartDate }; // Условие "больше или равно"
+            filter.date = { [Op.gte]: parsedStartDate };
         }
 
         if (endDate) {
@@ -69,14 +66,10 @@ router.get("/", async (req, res) => {
             if (isNaN(parsedEndDate.getTime())) {
                 return res.status(400).json({ error: "Некорректный формат конечной даты" });
             }
-            filter.date = {
-                ...filter.date,
-                [Op.lte]: parsedEndDate, // Условие "меньше или равно"
-            };
+            filter.date = { ...filter.date, [Op.lte]: parsedEndDate };
         }
 
         const events = await Event.findAll({ where: filter });
-
         return res.json(events);
     } catch (error) {
         console.error(error);
@@ -111,8 +104,6 @@ router.get("/", async (req, res) => {
  *       500:
  *         description: Ошибка сервера
  */
-
-//  Получить одно мероприятие по ID
 router.get("/:id", async (req, res) => {
     try {
         const event = await Event.findByPk(req.params.id);
@@ -129,6 +120,8 @@ router.get("/:id", async (req, res) => {
  * @swagger
  * /events:
  *   post:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Создать новое мероприятие
  *     description: Создает новое мероприятие в системе.
  *     tags: [Events]
@@ -175,24 +168,20 @@ router.get("/:id", async (req, res) => {
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-
-//  Создать мероприятие (POST /events)
-router.post("/", async (req, res) => {
+router.post("/", passport.authenticate("jwt", { session: false }), async (req, res) => {
     try {
-        const { title, description, date, createdBy } = req.body;
+        const { title, description, date } = req.body;
+        const createdBy = req.user.id;
 
-        // Проверяем обязательные поля
-        if (!title || !date || !createdBy) {
-            return res.status(412).json({ error: "Заполните обязательные поля: title, date, createdBy" });
+        if (!title || !date) {
+            return res.status(412).json({ error: "Заполните обязательные поля: title, date" });
         }
 
-        // Проверяем корректность даты
         const parsedDate = new Date(date);
         if (isNaN(parsedDate.getTime())) {
             return res.status(400).json({ error: "Некорректный формат даты" });
         }
 
-        // Создаем мероприятие
         const event = await Event.create({ title, description, date: parsedDate, createdBy });
         res.status(201).json(event);
     } catch (error) {
@@ -204,6 +193,8 @@ router.post("/", async (req, res) => {
  * @swagger
  * /events/{id}:
  *   put:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Обновить мероприятие
  *     description: Вносит изменения в существующее мероприятие по его ID.
  *     tags: [Events]
@@ -235,13 +226,15 @@ router.post("/", async (req, res) => {
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-
-//  Обновить мероприятие (PUT /events/:id)
-router.put("/:id", async (req, res) => {
+router.put("/:id", passport.authenticate("jwt", { session: false }), async (req, res) => {
     try {
         const event = await Event.findByPk(req.params.id);
         if (!event) {
             return res.status(404).json({ error: "Мероприятие не найдено" });
+        }
+
+        if (req.user.id !== event.createdBy) {
+            return res.status(403).json({ error: "Нет прав для изменения" });
         }
 
         const { date } = req.body;
@@ -264,6 +257,8 @@ router.put("/:id", async (req, res) => {
  * @swagger
  * /events/{id}:
  *   delete:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Удалить мероприятие
  *     description: Удаляет мероприятие из системы по его ID.
  *     tags: [Events]
@@ -283,13 +278,15 @@ router.put("/:id", async (req, res) => {
  *       500:
  *         description: Ошибка сервера
  */
-
-//  Удалить мероприятие (DELETE /events/:id)
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", passport.authenticate("jwt", { session: false }), async (req, res) => {
     try {
         const event = await Event.findByPk(req.params.id);
         if (!event) {
             return res.status(404).json({ error: "Мероприятие не найдено" });
+        }
+
+        if (req.user.id !== event.createdBy) {
+            return res.status(403).json({ error: "Нет прав для удаления" });
         }
 
         await event.destroy();
