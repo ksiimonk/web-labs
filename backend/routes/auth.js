@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
+const { sendSecurityAlert } = require("../utils/emailSender");
 
 /**
  * @swagger
@@ -105,10 +106,50 @@ router.post("/login", async (req, res) => {
             return res.status(401).json({ error: "Неверный пароль" });
         }
 
+        // Получение данных устройства
+        const clientIp = req.headers["x-forwarded-for"] || req.ip;
+        const userAgent = User.hashDevice(req.headers["user-agent"] || "Unknown");
+        let securityAlert = false;
+
+        // Проверка истории
+        const isNewIp = !user.ipHistory.includes(clientIp);
+        const isNewDevice = !user.deviceHistory.includes(userAgent);
+
+        // Отправка уведомления
+        if ((isNewIp || isNewDevice) && user.notificationPreferences.newDeviceAlert) {
+            try {
+                await sendSecurityAlert(user.email, clientIp, userAgent);
+                securityAlert = true;
+            } catch (emailError) {
+                console.error("Ошибка отправки email:", emailError);
+            }
+        }
+
+        // Обновление истории
+        await user.update({
+            ipHistory: [...new Set([clientIp, ...user.ipHistory.slice(0, 4)])],
+            deviceHistory: [...new Set([userAgent, ...user.deviceHistory.slice(0, 4)])],
+            lastLoginIp: clientIp,
+        });
+
+        // Генерация токена
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-        res.json({ token });
+
+        res.json({ 
+            token,
+            securityAlert,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name
+            }
+        });
     } catch (error) {
-        res.status(500).json({ error: "Ошибка входа", details: error.message });
+        res.status(500).json({ 
+            error: "Ошибка входа", 
+            details: error.message,
+            stack: process.env.NODE_ENV === "development" ? error.stack : undefined
+        });
     }
 });
 

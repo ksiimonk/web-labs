@@ -85,7 +85,7 @@ app.use("/events", eventRoutes);
 // Проверка БД
 authenticateDB();
 
-sequelize.sync({ force: false }).then(() => {
+sequelize.sync({ force: true }).then(() => {
     console.log("База данных синхронизирована");
 }).catch((error) => {
     console.error("Ошибка синхронизации базы данных:", error);

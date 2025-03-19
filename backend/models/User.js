@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const User = sequelize.define("User", {
     id: {
@@ -31,9 +32,17 @@ const User = sequelize.define("User", {
     lastLoginIp: {
         type: DataTypes.STRING,
     },
-    knownDevices: {
+    ipHistory: {
         type: DataTypes.ARRAY(DataTypes.STRING),
         defaultValue: [],
+    },
+    deviceHistory: {
+        type: DataTypes.ARRAY(DataTypes.STRING),
+        defaultValue: [],
+    },
+    notificationPreferences: {
+        type: DataTypes.JSONB,
+        defaultValue: { newDeviceAlert: true },
     },
 });
 
@@ -46,6 +55,10 @@ User.beforeCreate(async (user) => {
 
 User.prototype.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
+};
+
+User.hashDevice = function(ua) {
+    return crypto.createHash("sha256").update(ua).digest("hex");
 };
 
 module.exports = User;
