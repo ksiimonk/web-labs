@@ -14,6 +14,43 @@ const router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Event:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         date:
+ *           type: string
+ *           format: date-time
+ *         createdBy:
+ *           type: string
+ *           format: uuid
+ *       required:
+ *         - title
+ *         - date
+ *         - createdBy
+ * 
+ *     EventUpdate:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         date:
+ *           type: string
+ *           format: date
+ */
+
+/**
+ * @swagger
  * /events:
  *   get:
  *     summary: Получить список всех мероприятий
@@ -130,41 +167,18 @@ router.get("/:id", async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - title
- *               - date
- *             properties:
- *               title:
- *                 type: string
- *                 description: Название мероприятия
- *               description:
- *                 type: string
- *                 description: Описание мероприятия
- *               date:
- *                 type: string
- *                 format: date
- *                 description: Дата проведения мероприятия
+ *             $ref: '#/components/schemas/Event'
  *     responses:
  *       201:
  *         description: Мероприятие успешно создано
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: string
- *                   format: uuid
- *                 title:
- *                   type: string
- *                 description:
- *                   type: string
- *                 date:
- *                   type: string
- *                   format: date
+ *               $ref: '#/components/schemas/Event'
  *       400:
  *         description: Некорректные данные
+ *       412:
+ *         description: Не заполнены обязательные поля
  *       500:
  *         description: Внутренняя ошибка сервера
  */
@@ -221,6 +235,8 @@ router.post("/", passport.authenticate("jwt", { session: false }), async (req, r
  *               $ref: '#/components/schemas/Event'
  *       400:
  *         description: Ошибка в данных
+ *       403:
+ *         description: Нет прав для изменения
  *       404:
  *         description: Мероприятие не найдено
  *       500:
@@ -273,6 +289,8 @@ router.put("/:id", passport.authenticate("jwt", { session: false }), async (req,
  *     responses:
  *       200:
  *         description: Мероприятие успешно удалено
+ *       403:
+ *         description: Нет прав для удаления
  *       404:
  *         description: Мероприятие не найдено
  *       500:

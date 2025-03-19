@@ -11,6 +11,28 @@ const router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         name:
+ *           type: string
+ *         email:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *       required:
+ *         - name
+ *         - email
+ */
+
+/**
+ * @swagger
  * /users:
  *   get:
  *     summary: Получить список всех пользователей
