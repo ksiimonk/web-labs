@@ -7,10 +7,12 @@ require("dotenv").config();
 const { authenticateDB, sequelize } = require("./config/db");
 const userRoutes = require("./routes/users");
 const eventRoutes = require("./routes/events");
+const authRoutes = require("./routes/auth");
+const passport = require("passport");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 5000; // Порт для сервера
+const PORT = process.env.PORT || 5000;
 
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS.split(',');
 const allowedMethods = process.env.CORS_ALLOWED_METHODS.split(',');
@@ -23,17 +25,15 @@ const corsOptions = {
     if (allowedOrigins.includes(origin) || !origin) {
       callback(null, true);
     } else {
-      callback(null, false); // Отклоняем запрос без ошибки, но без CORS-заголовков
+      callback(null, false);
     }
   },
   methods: allowedMethods,
   allowedHeaders: allowedHeaders,
 };
 
-// Используем CORS с кастомной обработкой ошибок
 app.use(cors(corsOptions));
 
-// Middleware для возврата ошибки при блокировке CORS
 app.use((req, res, next) => {
   if (!req.headers.origin || allowedOrigins.includes(req.headers.origin)) {
     return next();
@@ -41,12 +41,12 @@ app.use((req, res, next) => {
   res.status(403).json({ message: "Access Forbidden: CORS policy does not allow this origin." });
 });
 
-app.use(express.json()); // Для парсинга JSON данных
+app.use(express.json());
 
-// Swagger Documentation Configuration
+// Swagger
 const swaggerOptions = {
     swaggerDefinition: {
-      openapi: "3.0.0", // Определение версии OpenAPI
+      openapi: "3.0.0",
       info: {
         title: "API для управления мероприятиями",
         description: "Документация API для работы с пользователями и мероприятиями",
@@ -57,31 +57,40 @@ const swaggerOptions = {
           url: `http://localhost:${PORT}`,
         },
       ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: "http",
+            scheme: "bearer",
+            bearerFormat: "JWT",
+          },
+        },
+      },
     },
-    apis: ["./routes/*.js"], // Путь к файлам с API-маршрутами
+    apis: ["./routes/*.js"],
   };
   
-  // Инициализация Swagger JSDoc
-  const swaggerSpec = swaggerJsdoc(swaggerOptions);
-  
-  // Подключение маршрута для отображения документации Swagger
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Подключаем маршруты
+// Passport
+app.use(passport.initialize());
+require("./config/passport");
+
+// Роутеры
+app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/events", eventRoutes);
 
-// Проверяем соединение с базой данных
+// Проверка БД
 authenticateDB();
 
-// Синхронизация базы данных
-sequelize.sync({ force: false }).then(() => {
+sequelize.sync({ force: true }).then(() => {
     console.log("База данных синхронизирована");
 }).catch((error) => {
     console.error("Ошибка синхронизации базы данных:", error);
 });
 
-// Запуск сервера
 app.listen(PORT, (err) => {
     if (err) {
         console.error("Ошибка при запуске сервера:", err);
