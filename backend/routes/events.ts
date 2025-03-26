@@ -1,7 +1,7 @@
-const express = require("express");
-const { Op } = require("sequelize");
-const Event = require("../models/Event");
-const passport = require("passport");
+import express from "express";
+import { Op } from "sequelize";
+import Event from "@models/Event";
+import passport from "passport";
 
 const router = express.Router();
 
@@ -36,7 +36,7 @@ const router = express.Router();
  *         - title
  *         - date
  *         - createdBy
- * 
+ *
  *     EventUpdate:
  *       type: object
  *       properties:
@@ -85,33 +85,39 @@ const router = express.Router();
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.get("/", async (req, res) => {
-    try {
-        const { startDate, endDate } = req.query;
-        let filter = {};
 
-        if (startDate) {
-            const parsedStartDate = new Date(startDate);
-            if (isNaN(parsedStartDate.getTime())) {
-                return res.status(400).json({ error: "Некорректный формат начальной даты" });
-            }
-            filter.date = { [Op.gte]: parsedStartDate };
-        }
+router.get("/", async (req: express.Request, res: express.Response) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const filter: { date?: { [Op.gte]?: Date; [Op.lte]?: Date } } = {};
 
-        if (endDate) {
-            const parsedEndDate = new Date(endDate);
-            if (isNaN(parsedEndDate.getTime())) {
-                return res.status(400).json({ error: "Некорректный формат конечной даты" });
-            }
-            filter.date = { ...filter.date, [Op.lte]: parsedEndDate };
-        }
-
-        const events = await Event.findAll({ where: filter });
-        return res.json(events);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Ошибка сервера", details: error.message });
+    if (startDate) {
+      const parsedStartDate = new Date(startDate as string);
+      if (isNaN(parsedStartDate.getTime())) {
+        res.status(400).json({ error: "Некорректный формат начальной даты" });
+        return;
+      }
+      filter.date = { [Op.gte]: parsedStartDate };
     }
+
+    if (endDate) {
+      const parsedEndDate = new Date(endDate as string);
+      if (isNaN(parsedEndDate.getTime())) {
+        res.status(400).json({ error: "Некорректный формат конечной даты" });
+        return;
+      }
+      filter.date = { ...filter.date, [Op.lte]: parsedEndDate };
+    }
+
+    const events = await Event.findAll({ where: filter });
+    res.json(events);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    res.status(500).json({
+      error: "Ошибка при получении мероприятий",
+      details: message,
+    });
+  }
 });
 
 /**
@@ -141,16 +147,22 @@ router.get("/", async (req, res) => {
  *       500:
  *         description: Ошибка сервера
  */
-router.get("/:id", async (req, res) => {
-    try {
-        const event = await Event.findByPk(req.params.id);
-        if (!event) {
-            return res.status(404).json({ error: "Мероприятие не найдено" });
-        }
-        res.status(200).json(event);
-    } catch (error) {
-        res.status(500).json({ error: "Ошибка при поиске мероприятия", details: error.message });
+
+router.get("/:id", async (req: express.Request, res: express.Response) => {
+  try {
+    const event = await Event.findByPk(req.params.id);
+    if (!event) {
+      res.status(404).json({ error: "Мероприятие не найдено" });
+      return;
     }
+    res.json(event);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    res.status(500).json({
+      error: "Ошибка при поиске мероприятия",
+      details: message,
+    });
+  }
 });
 
 /**
@@ -182,26 +194,43 @@ router.get("/:id", async (req, res) => {
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.post("/", passport.authenticate("jwt", { session: false }), async (req, res) => {
+
+router.post(
+  "/",
+  passport.authenticate("jwt", { session: false }),
+  async (req: express.Request, res: express.Response) => {
     try {
-        const { title, description, date } = req.body;
-        const createdBy = req.user.id;
+      const { title, description, date } = req.body;
+      const createdBy = (req.user as { id: string }).id;
 
-        if (!title || !date) {
-            return res.status(412).json({ error: "Заполните обязательные поля: title, date" });
-        }
+      if (!title || !date) {
+        res.status(400).json({ error: "Заполните обязательные поля: title, date" });
+        return;
+      }
 
-        const parsedDate = new Date(date);
-        if (isNaN(parsedDate.getTime())) {
-            return res.status(400).json({ error: "Некорректный формат даты" });
-        }
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        res.status(400).json({ error: "Некорректный формат даты" });
+        return;
+      }
 
-        const event = await Event.create({ title, description, date: parsedDate, createdBy });
-        res.status(201).json(event);
-    } catch (error) {
-        res.status(500).json({ error: "Ошибка при создании мероприятия", details: error.message });
+      const event = await Event.create({
+        title,
+        description,
+        date: parsedDate,
+        createdBy,
+      });
+
+      res.status(201).json(event);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({
+        error: "Ошибка при создании мероприятия",
+        details: message,
+      });
     }
-});
+  },
+);
 
 /**
  * @swagger
@@ -242,32 +271,46 @@ router.post("/", passport.authenticate("jwt", { session: false }), async (req, r
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.put("/:id", passport.authenticate("jwt", { session: false }), async (req, res) => {
+
+router.put(
+  "/:id",
+  passport.authenticate("jwt", { session: false }),
+  async (req: express.Request, res: express.Response) => {
     try {
-        const event = await Event.findByPk(req.params.id);
-        if (!event) {
-            return res.status(404).json({ error: "Мероприятие не найдено" });
-        }
+      const event = await Event.findByPk(req.params.id);
+      if (!event) {
+        res.status(404).json({ error: "Мероприятие не найдено" });
+        return;
+      }
 
-        if (req.user.id !== event.createdBy) {
-            return res.status(403).json({ error: "Нет прав для изменения" });
-        }
+      if ((req.user as { id: string }).id !== event.createdBy) {
+        res.status(403).json({ error: "Недостаточно прав для изменения" });
+        return;
+      }
 
-        const { date } = req.body;
-        if (date) {
-            const parsedDate = new Date(date);
-            if (isNaN(parsedDate.getTime())) {
-                return res.status(400).json({ error: "Некорректный формат даты" });
-            }
-            req.body.date = parsedDate;
-        }
+      const { date, ...rest } = req.body;
+      const updateData: { date?: Date; [key: string]: any } = { ...rest };
 
-        await event.update(req.body);
-        res.status(200).json(event);
-    } catch (error) {
-        res.status(500).json({ error: "Ошибка при обновлении мероприятия", details: error.message });
+      if (date) {
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+          res.status(400).json({ error: "Некорректный формат даты" });
+          return;
+        }
+        updateData.date = parsedDate;
+      }
+
+      await event.update(updateData);
+      res.json(event);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({
+        error: "Ошибка при обновлении мероприятия",
+        details: message,
+      });
     }
-});
+  },
+);
 
 /**
  * @swagger
@@ -296,22 +339,33 @@ router.put("/:id", passport.authenticate("jwt", { session: false }), async (req,
  *       500:
  *         description: Ошибка сервера
  */
-router.delete("/:id", passport.authenticate("jwt", { session: false }), async (req, res) => {
+
+router.delete(
+  "/:id",
+  passport.authenticate("jwt", { session: false }),
+  async (req: express.Request, res: express.Response) => {
     try {
-        const event = await Event.findByPk(req.params.id);
-        if (!event) {
-            return res.status(404).json({ error: "Мероприятие не найдено" });
-        }
+      const event = await Event.findByPk(req.params.id);
+      if (!event) {
+        res.status(404).json({ error: "Мероприятие не найдено" });
+        return;
+      }
 
-        if (req.user.id !== event.createdBy) {
-            return res.status(403).json({ error: "Нет прав для удаления" });
-        }
+      if ((req.user as { id: string }).id !== event.createdBy) {
+        res.status(403).json({ error: "Недостаточно прав для удаления" });
+        return;
+      }
 
-        await event.destroy();
-        res.status(200).json({ message: "Мероприятие удалено" });
-    } catch (error) {
-        res.status(500).json({ error: "Ошибка при удалении мероприятия", details: error.message });
+      await event.destroy();
+      res.status(204).send();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({
+        error: "Ошибка при удалении мероприятия",
+        details: message,
+      });
     }
-});
+  },
+);
 
-module.exports = router;
+export default router;

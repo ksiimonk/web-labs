@@ -1,12 +1,13 @@
-const express = require("express");
-const User = require("../models/User");
+import express from "express";
+import User from "../models/User";
+
 const router = express.Router();
 
 /**
  * @swagger
  * tags:
  *   name: Users
- *   description: API для управления пользователями
+ *   description: Управление пользователями
  */
 
 /**
@@ -35,12 +36,11 @@ const router = express.Router();
  * @swagger
  * /users:
  *   get:
- *     summary: Получить список всех пользователей
- *     description: Возвращает список зарегистрированных пользователей в системе.
+ *     summary: Получить список пользователей
  *     tags: [Users]
  *     responses:
  *       200:
- *         description: Список пользователей успешно получен
+ *         description: Список пользователей
  *         content:
  *           application/json:
  *             schema:
@@ -50,13 +50,17 @@ const router = express.Router();
  *       500:
  *         description: Внутренняя ошибка сервера
  */
-router.get("/", async (req, res) => {
-    try {
-        const users = await User.findAll();
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ error: "Ошибка при получении пользователей", details: error.message });
-    }
+router.get("/", async (req: express.Request, res: express.Response) => {
+  try {
+    const users = await User.findAll();
+    res.status(200).json(users);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    res.status(500).json({
+      error: "Ошибка при получении пользователей",
+      details: message,
+    });
+  }
 });
 
-module.exports = router;
+export default router;
