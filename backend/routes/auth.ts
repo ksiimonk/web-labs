@@ -12,7 +12,7 @@ const router = express.Router();
  * tags:
  *   name: Auth
  *   description: User authentication endpoints
- * 
+ *
  * components:
  *   schemas:
  *     User:
@@ -117,7 +117,7 @@ router.post(
       logger.debug(`Registration attempt for email: ${email}`);
 
       const existingUser = await User.findOne({ where: { email } });
-      
+
       if (existingUser) {
         logger.warn(`Duplicate registration attempt for email: ${email}`);
         return res.status(409).json({ error: "Email already in use" });
@@ -125,20 +125,20 @@ router.post(
 
       const user = await User.create({ name, email, password });
       logger.info(`User registered successfully: ${email}`, { userId: user.id });
-      
-      return res.status(201).json({ 
-        id: user.id, 
-        email: user.email 
+
+      return res.status(201).json({
+        id: user.id,
+        email: user.email,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
       logger.error("Registration failed", { error: message });
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Registration failed",
-        ...(process.env.NODE_ENV === "development" && { details: message })
+        ...(process.env.NODE_ENV === "development" && { details: message }),
       });
     }
-  }
+  },
 );
 
 /**
@@ -205,8 +205,9 @@ router.post(
         return res.status(401).json({ error: "Invalid password" });
       }
 
-      const clientIp = req.ip || (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || "";
-      const userAgent = req.headers['user-agent'] || "unknown";
+      const clientIp =
+        req.ip || (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "";
+      const userAgent = req.headers["user-agent"] || "unknown";
       const deviceHash = User.hashDevice(userAgent);
 
       // Check for new device/login
@@ -227,12 +228,12 @@ router.post(
             ip: clientIp,
             device: userAgent,
             isNewIp,
-            isNewDevice
+            isNewDevice,
           });
         } catch (emailError) {
-          logger.error("Failed to send security alert", { 
+          logger.error("Failed to send security alert", {
             error: emailError instanceof Error ? emailError.message : "Unknown error",
-            userId: user.id
+            userId: user.id,
           });
         }
       }
@@ -265,12 +266,12 @@ router.post(
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
       logger.error("Login failed", { error: message });
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Login failed",
-        ...(process.env.NODE_ENV === "development" && { details: message })
+        ...(process.env.NODE_ENV === "development" && { details: message }),
       });
     }
-  }
+  },
 );
 
 export default router;

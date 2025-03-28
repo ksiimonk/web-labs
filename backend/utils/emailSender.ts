@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport({
 export const sendSecurityAlert = async (params: SecurityAlertParams): Promise<boolean> => {
   try {
     console.log(`Attempting to send security alert to: ${params.email}`);
-    
+
     const mailOptions = {
       from: `"Security Service" <${process.env.EMAIL_USER}>`,
       to: params.email,

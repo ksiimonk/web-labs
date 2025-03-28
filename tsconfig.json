@@ -13,7 +13,8 @@
       "@config/*": ["backend/config/*"],
       "@models/*": ["backend/models/*"],
       "@routes/*": ["backend/routes/*"],
-      "@utils/*": ["backend/utils/*"]
+      "@utils/*": ["backend/utils/*"],
+      "@middlewares/*": ["./middlewares/*"]
     }
   },
   "include": ["**/*.ts", "../index.ts", "backend/**/*"],

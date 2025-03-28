@@ -17,7 +17,11 @@ interface UserAttributes {
   };
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, "id" | "createdAt" | "ipHistory" | "deviceHistory" | "notificationPreferences"> {}
+interface UserCreationAttributes
+  extends Optional<
+    UserAttributes,
+    "id" | "createdAt" | "ipHistory" | "deviceHistory" | "notificationPreferences"
+  > {}
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   declare id: string;
@@ -40,7 +44,10 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   }
 
   public static hashDevice(ua: string): string {
-    return crypto.createHash("sha256").update(ua || "unknown").digest("hex");
+    return crypto
+      .createHash("sha256")
+      .update(ua || "unknown")
+      .digest("hex");
   }
 }
 
@@ -117,14 +124,14 @@ User.beforeCreate(async (user: User) => {
   if (!user.password) throw new Error("Password is required");
   const salt = await bcrypt.genSalt(12);
   user.password = await bcrypt.hash(user.password, salt);
-  
+
   user.ipHistory = user.ipHistory || [];
   user.deviceHistory = user.deviceHistory || [];
   user.notificationPreferences = user.notificationPreferences || { newDeviceAlert: true };
 });
 
 User.beforeUpdate(async (user: User) => {
-  if (user.changed('password')) {
+  if (user.changed("password")) {
     const salt = await bcrypt.genSalt(12);
     user.password = await bcrypt.hash(user.password, salt);
   }
