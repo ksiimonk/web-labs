@@ -78,7 +78,7 @@ app.use("/events", eventRoutes);
 authenticateDB();
 
 sequelize
-  .sync({ force: true })
+  .sync({ force: false })
   .then(() => {
     console.log("База данных синхронизирована");
   })

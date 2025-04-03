@@ -9,7 +9,7 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Events
- *   description: API для управления мероприятиями
+ *   description: Управление мероприятиями
  */
 
 /**
@@ -22,39 +22,60 @@ const router = express.Router();
  *         id:
  *           type: string
  *           format: uuid
+ *           readOnly: true
+ *           description: Уникальный идентификатор
  *         title:
  *           type: string
+ *           description: Название мероприятия
  *         description:
  *           type: string
+ *           nullable: true
+ *           description: Описание
  *         date:
  *           type: string
  *           format: date-time
+ *           readOnly: true
+ *           description: Дата создания (устанавливается автоматически)
  *         createdBy:
  *           type: string
  *           format: uuid
+ *           readOnly: true
+ *           description: ID создателя
  *       required:
  *         - title
  *         - date
  *         - createdBy
+ *
+ *     EventCreate:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *           description: Название мероприятия
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           description: Описание
+ *       required:
+ *         - title
  *
  *     EventUpdate:
  *       type: object
  *       properties:
  *         title:
  *           type: string
+ *           description: Новое название
  *         description:
  *           type: string
- *         date:
- *           type: string
- *           format: date
+ *           nullable: true
+ *           description: Новое описание
  */
 
 /**
  * @swagger
  * /events:
  *   get:
- *     summary: Получить список всех мероприятий
- *     description: Возвращает все мероприятия, зарегистрированные в системе. Можно фильтровать по диапазону дат.
+ *     summary: Получить все мероприятия
  *     tags: [Events]
  *     parameters:
  *       - in: query
@@ -62,60 +83,102 @@ const router = express.Router();
  *         schema:
  *           type: string
  *           format: date
- *         required: false
- *         description: Начальная дата для фильтрации мероприятий (YYYY-MM-DD)
+ *         description: Начальная дата фильтрации
  *       - in: query
  *         name: endDate
  *         schema:
  *           type: string
  *           format: date
- *         required: false
- *         description: Конечная дата для фильтрации мероприятий (YYYY-MM-DD)
+ *         description: Конечная дата фильтрации
  *     responses:
  *       200:
- *         description: Список мероприятий успешно получен
+ *         description: Список мероприятий
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Event'
- *       400:
- *         description: Некорректный формат даты
  *       500:
- *         description: Внутренняя ошибка сервера
+ *         description: Ошибка сервера
  */
-
-router.get("/", async (req: express.Request, res: express.Response) => {
+router.get("/", async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    const filter: { date?: { [Op.gte]?: Date; [Op.lte]?: Date } } = {};
+    const where: any = {};
 
     if (startDate) {
-      const parsedStartDate = new Date(startDate as string);
-      if (isNaN(parsedStartDate.getTime())) {
-        res.status(400).json({ error: "Некорректный формат начальной даты" });
-        return;
+      const date = new Date(startDate as string);
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({ error: "Неверный формат даты" });
       }
-      filter.date = { [Op.gte]: parsedStartDate };
+      where.date = { [Op.gte]: date };
     }
 
     if (endDate) {
-      const parsedEndDate = new Date(endDate as string);
-      if (isNaN(parsedEndDate.getTime())) {
-        res.status(400).json({ error: "Некорректный формат конечной даты" });
-        return;
+      const date = new Date(endDate as string);
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({ error: "Неверный формат даты" });
       }
-      filter.date = { ...filter.date, [Op.lte]: parsedEndDate };
+      where.date = { ...where.date, [Op.lte]: date };
     }
 
-    const events = await Event.findAll({ where: filter });
+    const events = await Event.findAll({ where });
     res.json(events);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+  } catch (error) {
     res.status(500).json({
       error: "Ошибка при получении мероприятий",
-      details: message,
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /events:
+ *   post:
+ *     summary: Создать мероприятие
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/EventCreate'
+ *     responses:
+ *       201:
+ *         description: Мероприятие создано
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Неверные данные
+ *       500:
+ *         description: Ошибка сервера
+ */
+router.post("/", passport.authenticate("jwt", { session: false }), async (req, res) => {
+  try {
+    const { title, description } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: "Название обязательно" });
+    }
+
+    const event = await Event.create({
+      title,
+      description: description || null,
+      date: new Date(),
+      createdBy: (req.user as { id: string }).id,
+    });
+
+    return res.status(201).json(event);
+  } catch (error) {
+    return res.status(500).json({
+      error: "Ошибка создания мероприятия",
+      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 });
@@ -124,8 +187,7 @@ router.get("/", async (req: express.Request, res: express.Response) => {
  * @swagger
  * /events/{id}:
  *   get:
- *     summary: Получение мероприятия по ID
- *     description: Возвращает данные о конкретном мероприятии по его ID.
+ *     summary: Получить мероприятие по ID
  *     tags: [Events]
  *     parameters:
  *       - in: path
@@ -134,10 +196,9 @@ router.get("/", async (req: express.Request, res: express.Response) => {
  *           type: string
  *           format: uuid
  *         required: true
- *         description: Уникальный идентификатор мероприятия
  *     responses:
  *       200:
- *         description: Мероприятие найдено
+ *         description: Данные мероприятия
  *         content:
  *           application/json:
  *             schema:
@@ -147,100 +208,29 @@ router.get("/", async (req: express.Request, res: express.Response) => {
  *       500:
  *         description: Ошибка сервера
  */
-
-router.get("/:id", async (req: express.Request, res: express.Response) => {
+router.get("/:id", async (req, res) => {
   try {
     const event = await Event.findByPk(req.params.id);
     if (!event) {
-      res.status(404).json({ error: "Мероприятие не найдено" });
-      return;
+      return res.status(404).json({ error: "Мероприятие не найдено" });
     }
     res.json(event);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+  } catch (error) {
     res.status(500).json({
-      error: "Ошибка при поиске мероприятия",
-      details: message,
+      error: "Ошибка при получении мероприятия",
+      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 });
 
 /**
  * @swagger
- * /events:
- *   post:
- *     security:
- *       - bearerAuth: []
- *     summary: Создать новое мероприятие
- *     description: Создает новое мероприятие в системе.
- *     tags: [Events]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Event'
- *     responses:
- *       201:
- *         description: Мероприятие успешно создано
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Event'
- *       400:
- *         description: Некорректные данные
- *       412:
- *         description: Не заполнены обязательные поля
- *       500:
- *         description: Внутренняя ошибка сервера
- */
-
-router.post(
-  "/",
-  passport.authenticate("jwt", { session: false }),
-  async (req: express.Request, res: express.Response) => {
-    try {
-      const { title, description, date } = req.body;
-      const createdBy = (req.user as { id: string }).id;
-
-      if (!title || !date) {
-        res.status(400).json({ error: "Заполните обязательные поля: title, date" });
-        return;
-      }
-
-      const parsedDate = new Date(date);
-      if (isNaN(parsedDate.getTime())) {
-        res.status(400).json({ error: "Некорректный формат даты" });
-        return;
-      }
-
-      const event = await Event.create({
-        title,
-        description,
-        date: parsedDate,
-        createdBy,
-      });
-
-      res.status(201).json(event);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({
-        error: "Ошибка при создании мероприятия",
-        details: message,
-      });
-    }
-  },
-);
-
-/**
- * @swagger
  * /events/{id}:
  *   put:
+ *     summary: Обновить мероприятие
+ *     tags: [Events]
  *     security:
  *       - bearerAuth: []
- *     summary: Обновить мероприятие
- *     description: Вносит изменения в существующее мероприятие по его ID.
- *     tags: [Events]
  *     parameters:
  *       - in: path
  *         name: id
@@ -248,7 +238,6 @@ router.post(
  *           type: string
  *           format: uuid
  *         required: true
- *         description: Уникальный идентификатор мероприятия
  *     requestBody:
  *       required: true
  *       content:
@@ -263,64 +252,53 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/Event'
  *       400:
- *         description: Ошибка в данных
+ *         description: Неверные данные
  *       403:
- *         description: Нет прав для изменения
+ *         description: Нет прав на изменение
  *       404:
  *         description: Мероприятие не найдено
  *       500:
- *         description: Внутренняя ошибка сервера
+ *         description: Ошибка сервера
  */
-
-router.put(
-  "/:id",
-  passport.authenticate("jwt", { session: false }),
-  async (req: express.Request, res: express.Response) => {
-    try {
-      const event = await Event.findByPk(req.params.id);
-      if (!event) {
-        res.status(404).json({ error: "Мероприятие не найдено" });
-        return;
-      }
-
-      if ((req.user as { id: string }).id !== event.createdBy) {
-        res.status(403).json({ error: "Недостаточно прав для изменения" });
-        return;
-      }
-
-      const { date, ...rest } = req.body;
-      const updateData: { date?: Date; [key: string]: any } = { ...rest };
-
-      if (date) {
-        const parsedDate = new Date(date);
-        if (isNaN(parsedDate.getTime())) {
-          res.status(400).json({ error: "Некорректный формат даты" });
-          return;
-        }
-        updateData.date = parsedDate;
-      }
-
-      await event.update(updateData);
-      res.json(event);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({
-        error: "Ошибка при обновлении мероприятия",
-        details: message,
-      });
+router.put("/:id", passport.authenticate("jwt", { session: false }), async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id);
+    if (!event) {
+      return res.status(404).json({ error: "Мероприятие не найдено" });
     }
-  },
-);
+
+    if ((req.user as { id: string }).id !== event.createdBy) {
+      return res.status(403).json({ error: "Нет прав на изменение" });
+    }
+
+    const { title, description } = req.body;
+    const updateData: { title?: string; description?: string | null } = {};
+
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: "Нет данных для обновления" });
+    }
+
+    await event.update(updateData);
+    return res.json(event);
+  } catch (error) {
+    return res.status(500).json({
+      error: "Ошибка обновления мероприятия",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
 
 /**
  * @swagger
  * /events/{id}:
  *   delete:
+ *     summary: Удалить мероприятие
+ *     tags: [Events]
  *     security:
  *       - bearerAuth: []
- *     summary: Удалить мероприятие
- *     description: Удаляет мероприятие из системы по его ID.
- *     tags: [Events]
  *     parameters:
  *       - in: path
  *         name: id
@@ -328,44 +306,35 @@ router.put(
  *           type: string
  *           format: uuid
  *         required: true
- *         description: Уникальный идентификатор мероприятия
  *     responses:
- *       200:
- *         description: Мероприятие успешно удалено
+ *       204:
+ *         description: Мероприятие удалено
  *       403:
- *         description: Нет прав для удаления
+ *         description: Нет прав на удаление
  *       404:
  *         description: Мероприятие не найдено
  *       500:
  *         description: Ошибка сервера
  */
-
-router.delete(
-  "/:id",
-  passport.authenticate("jwt", { session: false }),
-  async (req: express.Request, res: express.Response) => {
-    try {
-      const event = await Event.findByPk(req.params.id);
-      if (!event) {
-        res.status(404).json({ error: "Мероприятие не найдено" });
-        return;
-      }
-
-      if ((req.user as { id: string }).id !== event.createdBy) {
-        res.status(403).json({ error: "Недостаточно прав для удаления" });
-        return;
-      }
-
-      await event.destroy();
-      res.status(204).send();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({
-        error: "Ошибка при удалении мероприятия",
-        details: message,
-      });
+router.delete("/:id", passport.authenticate("jwt", { session: false }), async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id);
+    if (!event) {
+      return res.status(404).json({ error: "Мероприятие не найдено" });
     }
-  },
-);
+
+    if ((req.user as { id: string }).id !== event.createdBy) {
+      return res.status(403).json({ error: "Нет прав на удаление" });
+    }
+
+    await event.destroy();
+    return res.status(204).send();
+  } catch (error) {
+    return res.status(500).json({
+      error: "Ошибка удаления мероприятия",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
 
 export default router;
