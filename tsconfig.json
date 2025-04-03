@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "outDir": "./dist",
+    "rootDir": "./backend",    
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "baseUrl": "./",       
+    "paths": {
+      "@config/*": ["backend/config/*"],
+      "@models/*": ["backend/models/*"],
+      "@routes/*": ["backend/routes/*"],
+      "@utils/*": ["backend/utils/*"],
+      "@middlewares/*": ["./middlewares/*"]
+    }
+  },
+  "include": ["**/*.ts", "../index.ts", "backend/**/*"],
+  "exclude": ["node_modules", "dist", "frontend"]
+}
