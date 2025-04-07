@@ -25,13 +25,13 @@ const allowedHeaders = process.env.CORS_ALLOWED_HEADERS?.split(",") || [];
 app.use(morgan(":method :url"));
 
 const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
+  /*origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
     }
-  },
+  },*/
   methods: allowedMethods,
   allowedHeaders: allowedHeaders,
 };

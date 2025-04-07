@@ -1,9 +1,55 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import User from "../models/User";
 import jwt from "jsonwebtoken";
 import { sendSecurityAlert } from "../utils/emailSender";
-import { body, validationResult } from "express-validator";
-import logger from "../utils/logger"; // Импорт вашего логгера
+import { body, validationResult, ValidationError } from "express-validator";
+import logger from "../utils/logger";
+import "express-async-errors";
+/* eslint-disable @typescript-eslint/no-namespace */
+
+// Интерфейсы запросов
+interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+interface AuthResponse {
+  token: string;
+  securityAlert: boolean;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface ErrorResponse {
+  error: string;
+  details?: string;
+}
+
+// Расширение типа Express User
+declare global {
+  namespace Express {
+    interface User {
+      id: string;
+      email: string;
+      name: string;
+      comparePassword(password: string): Promise<boolean>;
+      ipHistory: string[];
+      deviceHistory: string[];
+      notificationPreferences: {
+        newDeviceAlert: boolean;
+      };
+    }
+  }
+}
 
 const router = express.Router();
 
@@ -11,7 +57,7 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Auth
- *   description: User authentication endpoints
+ *   description: Аутентификация пользователей
  *
  * components:
  *   schemas:
@@ -56,7 +102,7 @@ const router = express.Router();
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Register a new user
+ *     summary: Регистрация нового пользователя
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -80,7 +126,7 @@ const router = express.Router();
  *                 minLength: 8
  *     responses:
  *       201:
- *         description: User registered successfully
+ *         description: Пользователь успешно зарегистрирован
  *         content:
  *           application/json:
  *             schema:
@@ -92,11 +138,11 @@ const router = express.Router();
  *                 email:
  *                   type: string
  *       400:
- *         description: Validation error
+ *         description: Ошибка валидации
  *       409:
- *         description: Email already exists
+ *         description: Email уже существует
  *       500:
- *         description: Internal server error
+ *         description: Внутренняя ошибка сервера
  */
 router.post(
   "/register",
@@ -105,11 +151,17 @@ router.post(
     body("email").isEmail().normalizeEmail(),
     body("password").isLength({ min: 8 }),
   ],
-  async (req: express.Request, res: express.Response) => {
+  async (
+    req: Request<object, object, RegisterRequest>,
+    res: Response<{ id: string; email: string } | { errors: ValidationError[] } | ErrorResponse>,
+  ): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      logger.warn("Validation errors during registration", { errors: errors.array() });
-      return res.status(400).json({ errors: errors.array() });
+      logger.warn("Validation errors during registration", {
+        errors: errors.array() as ValidationError[],
+      });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     try {
@@ -117,24 +169,24 @@ router.post(
       logger.debug(`Registration attempt for email: ${email}`);
 
       const existingUser = await User.findOne({ where: { email } });
-
       if (existingUser) {
         logger.warn(`Duplicate registration attempt for email: ${email}`);
-        return res.status(409).json({ error: "Email already in use" });
+        res.status(409).json({ error: "Email уже используется" });
+        return;
       }
 
       const user = await User.create({ name, email, password });
       logger.info(`User registered successfully: ${email}`, { userId: user.id });
 
-      return res.status(201).json({
+      res.status(201).json({
         id: user.id,
         email: user.email,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
       logger.error("Registration failed", { error: message });
-      return res.status(500).json({
-        error: "Registration failed",
+      res.status(500).json({
+        error: "Ошибка регистрации",
         ...(process.env.NODE_ENV === "development" && { details: message }),
       });
     }
@@ -145,7 +197,7 @@ router.post(
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Authenticate user
+ *     summary: Аутентификация пользователя
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -164,28 +216,32 @@ router.post(
  *                 type: string
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: Успешный вход
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AuthResponse'
  *       400:
- *         description: Validation error
+ *         description: Ошибка валидации
  *       401:
- *         description: Invalid credentials
+ *         description: Неверные учетные данные
  *       404:
- *         description: User not found
+ *         description: Пользователь не найден
  *       500:
- *         description: Internal server error
+ *         description: Внутренняя ошибка сервера
  */
 router.post(
   "/login",
   [body("email").isEmail().normalizeEmail(), body("password").exists()],
-  async (req: express.Request, res: express.Response) => {
+  async (
+    req: Request<object, object, LoginRequest>,
+    res: Response<AuthResponse | { errors: ValidationError[] } | ErrorResponse>,
+  ): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      logger.warn("Login validation errors", { errors: errors.array() });
-      return res.status(400).json({ errors: errors.array() });
+      logger.warn("Login validation errors", { errors: errors.array() as ValidationError[] });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
     try {
@@ -196,13 +252,15 @@ router.post(
 
       if (!user) {
         logger.warn(`Login attempt for non-existent user: ${email}`);
-        return res.status(404).json({ error: "User not found" });
+        res.status(404).json({ error: "Пользователь не найден" });
+        return;
       }
 
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
         logger.warn(`Invalid password attempt for user: ${email}`);
-        return res.status(401).json({ error: "Invalid password" });
+        res.status(401).json({ error: "Неверный пароль" });
+        return;
       }
 
       const clientIp =
@@ -210,7 +268,6 @@ router.post(
       const userAgent = req.headers["user-agent"] || "unknown";
       const deviceHash = User.hashDevice(userAgent);
 
-      // Check for new device/login
       const isNewIp = !user.ipHistory.includes(clientIp);
       const isNewDevice = !user.deviceHistory.includes(deviceHash);
       let securityAlert = false;
@@ -238,7 +295,6 @@ router.post(
         }
       }
 
-      // Update login history
       await user.update({
         ipHistory: [...new Set([clientIp, ...user.ipHistory.slice(0, 4)])],
         deviceHistory: [...new Set([deviceHash, ...user.deviceHistory.slice(0, 4)])],
@@ -254,7 +310,7 @@ router.post(
       const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: "1h" });
       logger.info(`User logged in successfully: ${email}`, { userId: user.id });
 
-      return res.json({
+      res.json({
         token,
         securityAlert,
         user: {
@@ -266,8 +322,8 @@ router.post(
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
       logger.error("Login failed", { error: message });
-      return res.status(500).json({
-        error: "Login failed",
+      res.status(500).json({
+        error: "Ошибка входа",
         ...(process.env.NODE_ENV === "development" && { details: message }),
       });
     }

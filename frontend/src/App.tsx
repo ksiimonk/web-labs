@@ -1,17 +1,27 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home/Home';
+import Login from './pages/Login/Login';
+import Register from './pages/Register/Register';
+import Events from './pages/Events/Events';
+import NotFound from './pages/NotFound/NotFound';
+import Header from './components/Header/Header';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
+      <Header />
       <Routes>
-        <Route path="/" element={<h1>Главная</h1>} />
-        <Route path="/auth" element={<h1>Авторизация</h1>} />
-        <Route path="/register" element={<h1>Регистрация</h1>} />
-        <Route path="/events" element={<h1>Мероприятия</h1>} />
-        <Route path="*" element={<h1>404</h1>} />
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/events" element={<Events />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
-    </BrowserRouter>
-  )
+    </Router>
+  );
 }
 
-export default App
+export default App;

@@ -7,6 +7,13 @@ interface SecurityAlertParams {
   date: string;
 }
 
+interface EmailOptions {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}
+
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE || "gmail",
   auth: {
@@ -19,7 +26,7 @@ export const sendSecurityAlert = async (params: SecurityAlertParams): Promise<bo
   try {
     console.log(`Attempting to send security alert to: ${params.email}`);
 
-    const mailOptions = {
+    const mailOptions: EmailOptions = {
       from: `"Security Service" <${process.env.EMAIL_USER}>`,
       to: params.email,
       subject: "Новый вход в аккаунт",
@@ -35,8 +42,9 @@ export const sendSecurityAlert = async (params: SecurityAlertParams): Promise<bo
     await transporter.sendMail(mailOptions);
     console.log("Email sent successfully to:", params.email);
     return true;
-  } catch (error) {
-    console.error("Failed to send security alert email:", error);
-    throw error;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Failed to send security alert email:", message);
+    throw new Error(message);
   }
 };
