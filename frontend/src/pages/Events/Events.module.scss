@@ -85,3 +85,36 @@
       margin-bottom: 1.5rem;
     }
   }
+
+  .dateFilter {
+    margin: 0 auto 2rem;
+    max-width: 400px;
+    text-align: center;
+  
+    .datePicker {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+      text-align: left;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: border-color 0.2s;
+  
+      &:focus {
+        outline: none;
+        border-color: #3498db;
+      }
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .dateFilter {
+      margin-bottom: 1.5rem;
+      padding: 0 0.5rem;
+      
+      .datePicker {
+        padding: 0.7rem;
+      }
+    }
+  }
