@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Header.module.scss';
 import { getUsername, isAuthenticated, removeToken } from '../../utils/localStorage';
+import logo from '../../assets/logo.svg'; 
 
 const Header = () => {
     const navigate = useNavigate();
@@ -16,7 +17,9 @@ const Header = () => {
     return (
         <header className={styles.header}>
           <div className={styles.logo}>
-            <Link to="/">LOGO</Link>
+            <Link to="/">
+              <img src={logo} alt="Логотип" className={styles.logoImage} />
+            </Link>
           </div>
           <div className={styles.nav}>
             {loggedIn ? (

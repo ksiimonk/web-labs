@@ -1,120 +1,122 @@
 .eventsPage {
-    width: 100%;
-    padding: 1rem;
-    box-sizing: border-box;
-    margin-top: 90px; 
-  
-    h1 {
-      text-align: center;
-      margin: 0 0 2.5rem 0; 
-      color: #333;
-      font-size: 1.8rem;
-    }
+  width: 100%;
+  max-width: 100vw;
+  padding: 1rem;
+  box-sizing: border-box;
+  margin-top: 90px;
+  overflow-x: hidden;
+
+  h1 {
+    text-align: center;
+    margin: 0 0 2.5rem 0;
+    color: #333;
+    font-size: 1.8rem;
   }
-  
+}
+
+.eventsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 3rem;
+}
+
+.eventCard {
+  background: white;
+  border-radius: 8px;
+  padding: 1.8rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  margin-bottom: 1rem;
+
+  h3 {
+    margin: 0 0 1.2rem 0;
+    color: #2c3e50;
+    font-size: 1.4rem;
+  }
+
+  p {
+    color: #666;
+    margin: 0 0 1.5rem 0;
+    line-height: 1.6;
+  }
+
+  .date {
+    color: #7f8c8d;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+}
+
+@media (min-width: 600px) {
   .eventsGrid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding-bottom: 3rem; 
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2.5rem;
   }
-  
-  .eventCard {
-    background: white;
-    border-radius: 8px;
-    padding: 1.8rem; 
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-    margin-bottom: 1rem; 
-  
-    h3 {
-      margin: 0 0 1.2rem 0; 
-      color: #2c3e50;
-      font-size: 1.4rem; 
-    }
-  
-    p {
-      color: #666;
-      margin: 0 0 1.5rem 0; 
-      line-height: 1.6;
-    }
-  
-    .date {
-      color: #7f8c8d;
-      font-size: 1rem; 
-      display: flex;
-      align-items: center;
-      gap: 0.8rem; 
+}
+
+@media (max-width: 768px) {
+  .eventsPage {
+    margin-top: 70px;
+    padding: 1rem;
+    
+    h1 {
+      font-size: 1.7rem;
+      margin-bottom: 2rem;
     }
   }
-  
-  @media (min-width: 600px) {
-    .eventsGrid {
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Шире карточки */
-      gap: 2.5rem;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .eventsPage {
-      margin-top: 70px; 
-      padding: 1rem;
-      
-      h1 {
-        font-size: 1.7rem;
-        margin-bottom: 2rem;
-      }
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .eventsPage {
-      margin-top: 150px;
-      padding: 0.8rem;
-      
-      h1 {
-        font-size: 1.5rem;
-        margin-bottom: 1.8rem;
-      }
-    }
-  
-    .eventCard {
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
+}
+
+@media (max-width: 480px) {
+  .eventsPage {
+    margin-top: 150px;
+    padding: 0.8rem;
+    
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1.8rem;
     }
   }
 
+  .eventCard {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+.dateFilter {
+  margin: 0 auto 2rem;
+  max-width: 400px;
+  text-align: center;
+
+  .datePicker {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    text-align: left;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+  }
+}
+
+@media (max-width: 480px) {
   .dateFilter {
-    margin: 0 auto 2rem;
-    max-width: 400px;
-    text-align: center;
-  
+    margin-bottom: 1.5rem;
+    padding: 0 0.5rem;
+    
     .datePicker {
-      width: 100%;
-      padding: 0.8rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 1rem;
-      text-align: left;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      transition: border-color 0.2s;
-  
-      &:focus {
-        outline: none;
-        border-color: #3498db;
-      }
+      padding: 0.7rem;
     }
   }
-  
-  @media (max-width: 480px) {
-    .dateFilter {
-      margin-bottom: 1.5rem;
-      padding: 0 0.5rem;
-      
-      .datePicker {
-        padding: 0.7rem;
-      }
-    }
-  }
+}
