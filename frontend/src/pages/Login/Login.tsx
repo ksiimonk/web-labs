@@ -19,21 +19,21 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors([]);
-
+  
     // Валидация
     const validationErrors: string[] = [];
     if (!email.trim()) validationErrors.push('Введите email');
     if (!password.trim()) validationErrors.push('Введите пароль');
-
+  
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
       return;
     }
-
+  
     try {
       await dispatch(loginUser({ email, password })).unwrap();
       navigate('/events');
-    } catch (error: any) {
+    } catch {
       setErrors(['Неверный email или пароль']);
     }
   };

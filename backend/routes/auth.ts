@@ -8,7 +8,6 @@ import "express-async-errors";
 import passport from "passport";
 /* eslint-disable @typescript-eslint/no-namespace */
 
-// Интерфейсы запросов
 interface RegisterRequest {
   name: string;
   email: string;
@@ -35,7 +34,6 @@ interface ErrorResponse {
   details?: string;
 }
 
-// Расширение типа Express User
 declare global {
   namespace Express {
     interface User {

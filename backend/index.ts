@@ -12,13 +12,13 @@ import authRoutes from "@routes/auth";
 import passport from "@config/passport";
 import "module-alias/register";
 import "tsconfig-paths/register";
+import logger from "./utils/logger";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(",") || [];
 const allowedMethods = process.env.CORS_ALLOWED_METHODS?.split(",") || [];
 const allowedHeaders = process.env.CORS_ALLOWED_HEADERS?.split(",") || [];
 
@@ -80,12 +80,12 @@ authenticateDB();
 sequelize
   .sync({ force: false })
   .then(() => {
-    console.log("База данных синхронизирована");
+    logger.info("База данных синхронизирована");
   })
   .catch((error: Error) => {
-    console.error("Ошибка синхронизации базы данных:", error.message);
+    logger.error("Ошибка синхронизации базы данных:", error.message);
   });
 
 app.listen(PORT, () => {
-  console.log(`Сервер запущен на http://localhost:${PORT}`);
+  logger.info("Сервер запущен на http://localhost:${PORT}");
 });

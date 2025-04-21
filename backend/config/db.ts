@@ -1,5 +1,6 @@
 import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
+import logger from "../utils/logger";
 
 dotenv.config();
 
@@ -17,9 +18,9 @@ const sequelize = new Sequelize(
 const authenticateDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log("Успешное подключение к базе данных");
+    logger.info("Успешное подключение к базе данных");
   } catch (error) {
-    console.error("Ошибка подключения к базе данных:", error);
+    logger.error("Ошибка подключения к базе данных:", error);
   }
 };
 

@@ -2,7 +2,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../api/axios';
 import { setUser, clearUser, setError } from './authSlice';
 import { saveToken, removeToken, saveUsername } from '../../utils/localStorage';
-import { setLoading} from '../ui/uiSlice';
+import { setLoading } from '../ui/uiSlice';
 import { getToken } from '../../utils/localStorage';
 
 interface LoginData {
@@ -14,6 +14,15 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      error?: string;
+    };
+  };
+  message?: string;
 }
 
 export const loginUser = createAsyncThunk(
@@ -28,8 +37,9 @@ export const loginUser = createAsyncThunk(
       dispatch(setUser(user));
       
       return user;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Ошибка входа';
+    } catch (error: unknown) {
+      const err = error as ApiError;
+      const errorMessage = err.response?.data?.error || 'Ошибка входа';
       dispatch(setError(errorMessage));
       throw error;
     }
@@ -42,8 +52,9 @@ export const registerUser = createAsyncThunk(
     try {
       const response = await api.post('/auth/register', { name, email, password });
       return response.data;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Ошибка регистрации';
+    } catch (error: unknown) {
+      const err = error as ApiError;
+      const errorMessage = err.response?.data?.error || 'Ошибка регистрации';
       dispatch(setError(errorMessage));
       throw error;
     }
@@ -74,9 +85,10 @@ export const fetchUser = createAsyncThunk(
       });
       dispatch(setUser(response.data));
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as ApiError;
       dispatch(clearUser());
-      dispatch(setError(error.response?.data?.error || 'Ошибка загрузки данных пользователя'));
+      dispatch(setError(err.response?.data?.error || 'Ошибка загрузки данных пользователя'));
       throw error;
     } finally {
       dispatch(setLoading(false));

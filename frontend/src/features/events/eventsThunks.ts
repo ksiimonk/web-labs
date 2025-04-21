@@ -9,54 +9,58 @@ interface Event {
   description: string;
   date: string;
   createdBy: string;
+  participants: string[];
+  participantsCount: number;
 }
 
 interface ApiError {
   response?: {
     data?: {
+      error?: string;
       message?: string;
     };
   };
-  message?: string;
+  message: string;
 }
 
-export const fetchEvents = createAsyncThunk(
-    'events/fetchEvents',
-    async (params: { createdBy?: string } | undefined, { dispatch }) => {
-      try {
-        dispatch(setLoading(true));
-        const response = await api.get('/events', {
-          params: params || {},
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          }
-        });
-        
-        if (params?.createdBy) {
-          return response.data.filter((event: Event) => event.createdBy === params.createdBy);
-        }
-        return response.data;
-      } catch (error) {
-      } finally {
-        dispatch(setLoading(false));
-      }
-    }
-  );
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export const fetchEvents = createAsyncThunk<Event[], { createdBy?: string } | undefined>(
+  'events/fetchEvents',
+  async (params, { getState }) => {
+    const response = await api.get<Event[]>('/events', {
+      params: params || {},
+      headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    
+    const state = getState() as { auth: { user?: { id: string } } };
+    const currentUserId = state.auth.user?.id || '';
+    
+    return response.data.map(event => ({
+      ...event,
+      isParticipating: event.participants.includes(currentUserId)
+    }));
+  }
+);
 
 export const createEvent = createAsyncThunk(
   'events/createEvent',
   async (eventData: { title: string; description: string; date: string; createdBy: string }, { dispatch }) => {
     try {
       dispatch(setLoading(true));
-      const response = await api.post('/events', eventData, {
+      const response = await api.post<Event>('/events', eventData, {
         headers: {
           Authorization: `Bearer ${getToken()}`
         }
       });
-      return response.data as Event;
-    } catch (error) {
+      return response.data;
+    } catch (error: unknown) {
       const err = error as ApiError;
-      const errorMessage = err.response?.data?.message || err.message || 'Ошибка создания мероприятия';
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
       dispatch(setError(errorMessage));
       throw error;
     } finally {
@@ -66,25 +70,26 @@ export const createEvent = createAsyncThunk(
 );
 
 export const updateEvent = createAsyncThunk(
-    'events/updateEvent',
-    async ({ id, ...eventData }: { id: string } & Partial<Event>, { dispatch }) => {
-      try {
-        dispatch(setLoading(true));
-        const response = await api.put(`/events/${id}`, eventData, {
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          }
-        });
-        return response.data;
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-        dispatch(setError(errorMessage));
-        throw error;
-      } finally {
-        dispatch(setLoading(false));
-      }
+  'events/updateEvent',
+  async ({ id, ...eventData }: { id: string } & Partial<Event>, { dispatch }) => {
+    try {
+      dispatch(setLoading(true));
+      const response = await api.put<Event>(`/events/${id}`, eventData, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      return response.data;
+    } catch (error: unknown) {
+      const err = error as ApiError;
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+      dispatch(setError(errorMessage));
+      throw error;
+    } finally {
+      dispatch(setLoading(false));
     }
-  );
+  }
+);
 
 export const deleteEvent = createAsyncThunk(
   'events/deleteEvent',
@@ -97,13 +102,42 @@ export const deleteEvent = createAsyncThunk(
         }
       });
       return id;
-    } catch (error) {
+    } catch (error: unknown) {
       const err = error as ApiError;
-      const errorMessage = err.response?.data?.message || err.message || 'Ошибка удаления мероприятия';
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
       dispatch(setError(errorMessage));
       throw error;
     } finally {
       dispatch(setLoading(false));
     }
+  }
+);
+
+export const participateEvent = createAsyncThunk<Event, string>(
+  'events/participate',
+  async (eventId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post<Event>(`/events/${eventId}/participate`, {}, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+      return response.data;
+    } catch (error: unknown) {
+      const err = error as ApiError;
+      return rejectWithValue(err.response?.data?.message || 'Не удалось присоединиться к мероприятию');
+    }
+  }
+);
+
+export const fetchEventParticipants = createAsyncThunk<{
+  eventId: string;
+  participants: User[];
+}, string>(
+  'events/fetchParticipants',
+  async (eventId: string) => {
+    const response = await api.get<User[]>(`/events/${eventId}/participants`);
+    return {
+      eventId,
+      participants: Array.isArray(response.data) ? response.data : []
+    };
   }
 );

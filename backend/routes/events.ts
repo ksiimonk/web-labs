@@ -3,9 +3,9 @@ import { Op } from "sequelize";
 import Event from "@models/Event";
 import passport from "passport";
 import "express-async-errors";
+import User from "@models/User";
 /* eslint-disable @typescript-eslint/no-namespace */
 
-// Интерфейсы запросов
 interface EventCreateRequest {
   title: string;
   description?: string;
@@ -28,7 +28,6 @@ interface ErrorResponse {
   details?: string;
 }
 
-// Расширение типа Express User
 declare global {
   namespace Express {
     interface User {
@@ -440,6 +439,133 @@ router.delete(
       const message = error instanceof Error ? error.message : "Unknown error";
       res.status(500).json({
         error: "Ошибка удаления события",
+        details: message,
+      });
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /events/{id}/participate:
+ *   post:
+ *     summary: Записаться на мероприятие
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Успешно записались на мероприятие
+ *       400:
+ *         description: Нельзя записаться на свое мероприятие
+ *       409:
+ *         description: Уже записаны на это мероприятие
+ *       500:
+ *         description: Ошибка сервера
+ */
+router.post(
+  "/:id/participate",
+  passport.authenticate("jwt", { session: false }),
+  async (req: Request<{ id: string }>, res: Response<Event | ErrorResponse>) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Не авторизован" });
+      return;
+    }
+
+    try {
+      const event = await Event.findByPk(req.params.id);
+      if (!event) {
+        res.status(404).json({ error: "Событие не найдено" });
+        return;
+      }
+
+      // Проверка что пользователь не создатель мероприятия
+      if (event.createdBy === req.user.id) {
+        res.status(400).json({ error: "Нельзя записаться на свое мероприятие" });
+        return;
+      }
+
+      // Проверка что пользователь еще не участвует
+      if (event.participants.includes(req.user.id)) {
+        res.status(409).json({ error: "Вы уже записаны на это мероприятие" });
+        return;
+      }
+
+      // Добавляем пользователя в участники
+      await event.update({
+        participants: [...event.participants, req.user.id],
+      });
+
+      res.status(200).json(event);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({
+        error: "Ошибка записи на мероприятие",
+        details: message,
+      });
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /events/{id}/participants:
+ *   get:
+ *     summary: Получить список участников мероприятия
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Список участников
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *       404:
+ *         description: Событие не найдено
+ *       500:
+ *         description: Ошибка сервера
+ */
+
+router.get(
+  "/:id/participants",
+  async (req: Request<{ id: string }>, res: Response<User[] | ErrorResponse>) => {
+    try {
+      const event = await Event.findByPk(req.params.id);
+      if (!event) {
+        res.status(404).json({ error: "Событие не найдено" });
+        return;
+      }
+
+      const users = await User.findAll({
+        where: {
+          id: {
+            [Op.in]: event.participants || [],
+          },
+        },
+        attributes: ["id", "name", "email"],
+      });
+
+      res.json(users);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({
+        error: "Ошибка получения участников",
         details: message,
       });
     }

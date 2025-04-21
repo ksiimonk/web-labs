@@ -79,7 +79,7 @@ const EventFormPage = () => {
         title: data.title,
         description: data.description,
         date: new Date(data.date).toISOString(),
-        createdBy: user.id // Добавляем createdBy
+        createdBy: user.id
       };
   
       if (id) {

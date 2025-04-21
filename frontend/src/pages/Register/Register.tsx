@@ -46,12 +46,13 @@ const Register = () => {
     e.preventDefault();
     
     if (!validateForm()) return;
-
+  
     try {
       await dispatch(registerUser({ name, email, password })).unwrap();
       navigate('/login');
-    } catch (error: any) {
-      if (error.message.includes('already exists')) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      if (err.message?.includes('already exists')) {
         setErrors(['Пользователь с таким email уже существует']);
       } else {
         setErrors(['Произошла ошибка при регистрации']);
