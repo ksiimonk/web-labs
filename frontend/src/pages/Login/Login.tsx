@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
-import { login } from '../../api/authService';
-import { saveToken, saveUsername, isAuthenticated } from '../../utils/localStorage';
+import { isAuthenticated } from '../../utils/localStorage';
 import styles from './Login.module.scss';
+import { useAppDispatch } from '../../store/hooks';
+import { loginUser } from '../../features/auth/authThunks';
 
 const Login = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   if (isAuthenticated()) {
     return <Navigate to="/events" />;
@@ -29,11 +31,9 @@ const Login = () => {
     }
 
     try {
-      const data = await login({ email, password });
-      saveToken(data.token);
-      saveUsername(data.user.name);
+      await dispatch(loginUser({ email, password })).unwrap();
       navigate('/events');
-    } catch (err: any) {
+    } catch (error: any) {
       setErrors(['Неверный email или пароль']);
     }
   };

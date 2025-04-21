@@ -5,6 +5,7 @@ import { sendSecurityAlert } from "../utils/emailSender";
 import { body, validationResult, ValidationError } from "express-validator";
 import logger from "../utils/logger";
 import "express-async-errors";
+import passport from "passport";
 /* eslint-disable @typescript-eslint/no-namespace */
 
 // Интерфейсы запросов
@@ -325,6 +326,57 @@ router.post(
       res.status(500).json({
         error: "Ошибка входа",
         ...(process.env.NODE_ENV === "development" && { details: message }),
+      });
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Получить данные текущего пользователя
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Данные пользователя
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Не авторизован
+ *       500:
+ *         description: Ошибка сервера
+ */
+router.get(
+  "/me",
+  passport.authenticate("jwt", { session: false }),
+  async (req: Request, res: Response<User | ErrorResponse>) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Не авторизован" });
+        return;
+      }
+
+      // Возвращаем данные пользователя без пароля
+      const user = await User.findByPk(req.user.id, {
+        attributes: { exclude: ["password"] },
+      });
+
+      if (!user) {
+        res.status(404).json({ error: "Пользователь не найден" });
+        return;
+      }
+
+      res.json(user);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({
+        error: "Ошибка загрузки данных пользователя",
+        details: message,
       });
     }
   },

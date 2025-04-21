@@ -1,36 +1,40 @@
 import { useEffect, useState } from 'react';
-import { getEvents, Event } from '../../api/eventService';
-import styles from './Events.module.scss';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchEvents } from '../../features/events/eventsThunks';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import styles from './Events.module.scss';
+
+interface EventsFetchParams {
+  startDate?: string;
+  endDate?: string;
+  createdBy?: string; // Добавляем для совместимости
+}
 
 const Events = () => {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const { events } = useAppSelector((state) => state.events);
+  const { isLoading, error } = useAppSelector((state) => state.ui);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [startDate, endDate] = dateRange;
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const data = await getEvents(
-          startDate?.toISOString(),
-          endDate?.toISOString()
-        );
-        setEvents(data);
-      } catch (err) {
-        setError('Не удалось загрузить мероприятия');
-        console.error('Error fetching events:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const params: EventsFetchParams = {};
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      params.startDate = start.toISOString();
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      params.endDate = end.toISOString();
+    }
+    
+    dispatch(fetchEvents(params));
+  }, [dispatch, startDate, endDate]);
 
-    fetchEvents();
-  }, [startDate, endDate]);
-
-  if (loading) return <div className={styles.loading}>Загрузка...</div>;
+  if (isLoading) return <div className={styles.loading}>Загрузка...</div>;
   if (error) return <div className={styles.error}>{error}</div>;
 
   return (
@@ -56,7 +60,6 @@ const Events = () => {
             <h3>{event.title}</h3>
             <p>{event.description}</p>
             <div className={styles.date}>
-              <span>📅</span>
               {new Date(event.date).toLocaleDateString('ru-RU', {
                 day: 'numeric',
                 month: 'long',

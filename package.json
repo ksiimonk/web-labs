@@ -26,6 +26,8 @@
   },
   "homepage": "https://github.com/ksiimonk/web-labs#readme",
   "dependencies": {
+    "@hookform/resolvers": "^5.0.1",
+    "@reduxjs/toolkit": "^2.7.0",
     "axios": "^1.8.4",
     "bcryptjs": "^2.4.3",
     "classnames": "^2.5.1",
@@ -40,12 +42,15 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.11.3",
+    "react-hook-form": "^7.56.0",
+    "react-redux": "^9.2.0",
     "react-router-dom": "^7.5.0",
     "sass": "^1.86.3",
     "sequelize": "^6.35.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",

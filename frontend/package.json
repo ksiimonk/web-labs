@@ -10,14 +10,19 @@
     "lint": "eslint . --ext .ts,.tsx --fix"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.0.1",
+    "@reduxjs/toolkit": "^2.7.0",
     "@types/react-datepicker": "^7.0.0",
     "axios": "^1.8.4",
     "classnames": "^2.5.1",
     "react": "^19.0.0",
     "react-datepicker": "^8.2.1",
     "react-dom": "^19.0.0",
+    "react-hook-form": "^7.56.0",
+    "react-redux": "^9.2.0",
     "react-router-dom": "^7.5.0",
-    "sass": "^1.86.3"
+    "sass": "^1.86.3",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

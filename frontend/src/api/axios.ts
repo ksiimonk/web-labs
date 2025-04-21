@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getToken } from '../utils/localStorage';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -7,22 +8,19 @@ const api = axios.create({
   },
 });
 
-// Добавляем перехватчик ошибок
+api.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response) {
-      // Обрабатываем ошибки валидации (400)
-      if (error.response.status === 400 && error.response.data?.errors) {
-        const validationErrors = error.response.data.errors
-          .map((err: { msg: string }) => err.msg)
-          .join(', ');
-        return Promise.reject(new Error(validationErrors));
-      }
-      // Обрабатываем другие ошибки
-      if (error.response.data?.error) {
-        return Promise.reject(new Error(error.response.data.error));
-      }
+    if (error.response?.status === 403) {
+      console.error('Доступ запрещён. Проверьте токен и права пользователя.');
     }
     return Promise.reject(error);
   }

@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
-import { register } from '../../api/authService';
 import { isAuthenticated } from '../../utils/localStorage';
 import styles from './Register.module.scss';
+import { useAppDispatch } from '../../store/hooks';
+import { registerUser } from '../../features/auth/authThunks';
 
 const Register = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   if (isAuthenticated()) {
     return <Navigate to="/events" />;
@@ -26,7 +28,7 @@ const Register = () => {
 
     if (!email.trim()) {
       newErrors.push('Введите email');
-    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.push('Введите корректный email');
     }
 
@@ -42,18 +44,15 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     
     if (!validateForm()) return;
 
     try {
-      await register({ email, name, password });
+      await dispatch(registerUser({ name, email, password })).unwrap();
       navigate('/login');
-    } catch (err: any) {
-      if (err.message.includes('already exists')) {
+    } catch (error: any) {
+      if (error.message.includes('already exists')) {
         setErrors(['Пользователь с таким email уже существует']);
-      } else if (err.message.includes('validation failed')) {
-        setErrors(['Проверьте правильность введенных данных']);
       } else {
         setErrors(['Произошла ошибка при регистрации']);
       }

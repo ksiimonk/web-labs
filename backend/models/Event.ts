@@ -10,7 +10,7 @@ interface EventAttributes {
   createdBy: string;
 }
 
-interface EventCreationAttributes extends Optional<EventAttributes, "id"> {}
+interface EventCreationAttributes extends Optional<EventAttributes, "id" | "date"> {}
 
 /**
  * @swagger
@@ -26,6 +26,7 @@ interface EventCreationAttributes extends Optional<EventAttributes, "id"> {}
  *           type: string
  *         description:
  *           type: string
+ *           nullable: true
  *         date:
  *           type: string
  *           format: date-time
@@ -69,6 +70,7 @@ Event.init(
     date: {
       type: DataTypes.DATE,
       allowNull: false,
+      defaultValue: DataTypes.NOW,
       validate: {
         isDate: true,
       },

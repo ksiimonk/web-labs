@@ -9,11 +9,13 @@ import "express-async-errors";
 interface EventCreateRequest {
   title: string;
   description?: string;
+  date?: string;
 }
 
 interface EventUpdateRequest {
   title?: string;
   description?: string | null;
+  date?: string;
 }
 
 interface DateFilterQuery {
@@ -60,7 +62,6 @@ const router = express.Router();
  *         date:
  *           type: string
  *           format: date-time
- *           readOnly: true
  *         createdBy:
  *           type: string
  *           format: uuid
@@ -78,6 +79,10 @@ const router = express.Router();
  *         description:
  *           type: string
  *           nullable: true
+ *         date:
+ *           type: string
+ *           format: date-time
+ *           description: Дата проведения события (по умолчанию текущая дата)
  *       required:
  *         - title
  *
@@ -89,6 +94,10 @@ const router = express.Router();
  *         description:
  *           type: string
  *           nullable: true
+ *         date:
+ *           type: string
+ *           format: date-time
+ *           description: Новая дата проведения события
  */
 
 /**
@@ -208,16 +217,26 @@ router.post(
     }
 
     try {
-      const { title, description } = req.body;
+      const { title, description, date } = req.body;
       if (!title) {
         res.status(400).json({ error: "Название обязательно" });
         return;
       }
 
+      let eventDate = new Date();
+      if (date) {
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+          res.status(400).json({ error: "Неверный формат даты" });
+          return;
+        }
+        eventDate = parsedDate;
+      }
+
       const event = await Event.create({
         title,
         description: description || null,
-        date: new Date(),
+        date: eventDate,
         createdBy: req.user.id,
       });
 
@@ -338,11 +357,19 @@ router.put(
         return;
       }
 
-      const { title, description } = req.body;
-      const updateData: { title?: string; description?: string | null } = {};
+      const { title, description, date } = req.body;
+      const updateData: { title?: string; description?: string | null; date?: Date } = {};
 
       if (title !== undefined) updateData.title = title;
       if (description !== undefined) updateData.description = description;
+      if (date !== undefined) {
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+          res.status(400).json({ error: "Неверный формат даты" });
+          return;
+        }
+        updateData.date = parsedDate;
+      }
 
       if (Object.keys(updateData).length === 0) {
         res.status(400).json({ error: "Нет данных для обновления" });
