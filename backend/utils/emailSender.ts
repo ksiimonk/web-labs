@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import logger from "./logger";
 
 interface SecurityAlertParams {
   email: string;
@@ -24,7 +25,7 @@ const transporter = nodemailer.createTransport({
 
 export const sendSecurityAlert = async (params: SecurityAlertParams): Promise<boolean> => {
   try {
-    console.log(`Attempting to send security alert to: ${params.email}`);
+    logger.debug(`Attempting to send security alert to: ${params.email}`);
 
     const mailOptions: EmailOptions = {
       from: `"Security Service" <${process.env.EMAIL_USER}>`,
@@ -40,11 +41,11 @@ export const sendSecurityAlert = async (params: SecurityAlertParams): Promise<bo
     };
 
     await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully to:", params.email);
+    logger.info("Email sent successfully to:", params.email);
     return true;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Failed to send security alert email:", message);
+    logger.error("Failed to send security alert email:", message);
     throw new Error(message);
   }
 };
